@@ -98,8 +98,6 @@ RUN echo '#!/bin/sh' > /var/www/html/start.sh && \
     echo 'nginx -g "daemon off;"' >> /var/www/html/start.sh && \
     chmod +x /var/www/html/start.sh
 
-# Generate Laravel key
-RUN php artisan key:generate
 
 # Switch to non-root user
 USER 1001
