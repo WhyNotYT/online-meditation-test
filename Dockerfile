@@ -1,67 +1,111 @@
-# Base image with PHP-FPM and Nginx
-FROM jkaninda/nginx-php-fpm:8.3
+
+FROM registry.access.redhat.com/ubi8/php-82:1-30
+
+# Set environment variables
+ENV DOCUMENT_ROOT=/var/www/html/public \
+    PHP_DEFAULT_INCLUDE_PATH=/usr/share/pear \
+    PHP_SYSCONF_PATH=/etc \
+    APP_ROOT=/var/www/html
+
+# Switch to root for installation
+USER 0
+
+# Install necessary packages
+RUN dnf -y module enable php:8.2 && \
+    dnf install -y --setopt=tsflags=nodocs \
+    php-fpm \
+    php-mysqlnd \
+    php-pgsql \
+    php-bcmath \
+    php-gd \
+    php-intl \
+    php-ldap \
+    php-mbstring \
+    php-pdo \
+    php-process \
+    php-soap \
+    php-opcache \
+    php-xml \
+    php-gmp \
+    php-pecl-apcu \
+    php-pecl-zip \
+    nginx \
+    && dnf clean all
+
+# Create necessary directories with correct permissions
+RUN mkdir -p /var/www/html \
+    /var/run/php-fpm \
+    /var/lib/php/session \
+    /var/lib/php/wsdlcache \
+    /var/lib/php/opcache \
+    /var/run/nginx \
+    /var/lib/nginx \
+    /var/log/nginx \
+    /var/log/php-fpm
 
 # Set working directory
 WORKDIR /var/www/html
 
-# Install MariaDB and supervisor
-RUN apt-get update && \
-    apt-get install -y mariadb-server supervisor && \
-    rm -rf /var/lib/apt/lists/*
+# Copy application files
+COPY --chown=1001:0 . .
 
-# Create necessary directories with correct permissions
-RUN mkdir -p /var/run/php && \
-    mkdir -p /var/run/nginx && \
-    mkdir -p /var/lib/nginx && \
-    mkdir -p /var/log/nginx && \
-    mkdir -p /var/log/supervisor && \
-    mkdir -p /var/run/mysqld && \
-    mkdir -p /etc/supervisor/conf.d && \
-    mkdir -p /var/lib/mysql && \
-    # Assign correct permissions for all directories
-    chmod -R 777 /var/run/php && \
-    chmod -R 777 /var/run/nginx && \
-    chmod -R 777 /var/lib/nginx && \
-    chmod -R 777 /var/log/nginx && \
-    chmod -R 777 /var/log/supervisor && \
-    chmod -R 777 /var/run/mysqld && \
-    chmod -R 777 /etc/supervisor/conf.d && \
-    chmod -R 777 /var/lib/mysql
-
-# Ensure PHP-FPM directories exist and have the right permissions
-RUN chown www-data:www-data /run/php
-
-# Copy project files
-COPY . .
-
-# Install PHP dependencies using Composer
+# Install Composer dependencies
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN composer install --no-dev --optimize-autoloader
 
-# Fix permissions for storage and cache directories
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache && \
-    chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
+# Configure permissions for OpenShift
+RUN chgrp -R 0 /var/www/html && \
+    chmod -R g=u /var/www/html && \
+    chmod -R 775 storage bootstrap/cache && \
+    chown -R 1001:0 /var/run/php-fpm && \
+    chown -R 1001:0 /var/lib/php && \
+    chown -R 1001:0 /var/run/nginx && \
+    chown -R 1001:0 /var/lib/nginx && \
+    chown -R 1001:0 /var/log/nginx && \
+    chown -R 1001:0 /var/log/php-fpm && \
+    chmod -R g=u /var/run/php-fpm && \
+    chmod -R g=u /var/lib/php && \
+    chmod -R g=u /var/run/nginx && \
+    chmod -R g=u /var/lib/nginx && \
+    chmod -R g=u /var/log/nginx && \
+    chmod -R g=u /var/log/php-fpm && \
+	chmod -R 775 /opt/app-root/src/.config/
 
-# Initialize MariaDB data directory
-RUN mysql_install_db --user=mysql --datadir=/var/lib/mysql
+	
 
-# Remove default Nginx config during build
-RUN rm /etc/nginx/conf.d/default.conf
+# Create PHP-FPM configuration
+RUN echo '[global]' > /etc/php-fpm.d/www.conf && \
+    echo 'pid = /var/run/php-fpm/php-fpm.pid' >> /etc/php-fpm.d/www.conf && \
+    echo 'error_log = /var/log/php-fpm/error.log' >> /etc/php-fpm.d/www.conf && \
+    echo '[www]' >> /etc/php-fpm.d/www.conf && \
+    echo 'listen = 127.0.0.1:9000' >> /etc/php-fpm.d/www.conf && \
+    echo 'listen.allowed_clients = 127.0.0.1' >> /etc/php-fpm.d/www.conf && \
+    echo 'pm = dynamic' >> /etc/php-fpm.d/www.conf && \
+    echo 'pm.max_children = 50' >> /etc/php-fpm.d/www.conf && \
+    echo 'pm.start_servers = 5' >> /etc/php-fpm.d/www.conf && \
+    echo 'pm.min_spare_servers = 5' >> /etc/php-fpm.d/www.conf && \
+    echo 'pm.max_spare_servers = 35' >> /etc/php-fpm.d/www.conf && \
+    echo 'php_admin_value[error_log] = /var/log/php-fpm/www-error.log' >> /etc/php-fpm.d/www.conf && \
+    echo 'php_admin_flag[log_errors] = on' >> /etc/php-fpm.d/www.conf && \
+    echo 'clear_env = no' >> /etc/php-fpm.d/www.conf
 
-# Copy configuration files
-COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-COPY php-fpm.conf /usr/local/etc/php-fpm.conf
+# Copy nginx configuration
+COPY nginx.conf /etc/nginx/nginx.conf
 
-# Define the document root for Nginx
-ENV DOCUMENT_ROOT=/var/www/html/public
+# Create and set up the start script with proper line endings
+RUN echo '#!/bin/sh' > /var/www/html/start.sh && \
+    echo 'php-fpm -F --fpm-config /etc/php-fpm.d/www.conf -c /etc/php.ini &' >> /var/www/html/start.sh && \
+    echo 'nginx -g "daemon off;"' >> /var/www/html/start.sh && \
+    chmod +x /var/www/html/start.sh
 
-# Expose port 80 (default for HTTP)
-EXPOSE 80
-
-# Run Laravel key generation and other necessary commands
+# Generate Laravel key
 RUN php artisan key:generate
 
-# Switch to non-root user (www-data) for runtime
-USER root
+# Switch to non-root user
+USER 1001
 
-# Use supervisor as the entry point
-CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+# Expose port 8080 (OpenShift preferred)
+EXPOSE 8080
+
+# Start services using the shell script
+CMD ["/var/www/html/start.sh"]
