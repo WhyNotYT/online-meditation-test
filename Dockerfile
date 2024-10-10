@@ -1,11 +1,7 @@
 
 FROM registry.access.redhat.com/ubi8/php-82:1-30
 
-# Set environment variables
-ENV DOCUMENT_ROOT=/var/www/html/public \
-    PHP_DEFAULT_INCLUDE_PATH=/usr/share/pear \
-    PHP_SYSCONF_PATH=/etc \
-    APP_ROOT=/var/www/html
+
 
 # Switch to root for installation
 USER 0
@@ -30,6 +26,7 @@ RUN dnf -y module enable php:8.2 && \
     php-pecl-apcu \
     php-pecl-zip \
     nginx \
+	nano \
     && dnf clean all
 
 # Create necessary directories with correct permissions
