@@ -51,4 +51,5 @@ EXPOSE 80
 
 # Use supervisor as the entry point
 RUN php artisan key:generate
+RUN php artisan session:table
 CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
