@@ -1,12 +1,9 @@
-
 FROM registry.access.redhat.com/ubi8/php-82:1-30
-
-
 
 # Switch to root for installation
 USER 0
 
-# Install necessary packages
+# Install necessary packages including Node.js and npm
 RUN dnf -y module enable php:8.2 && \
     dnf install -y --setopt=tsflags=nodocs \
     php-fpm \
@@ -26,7 +23,8 @@ RUN dnf -y module enable php:8.2 && \
     php-pecl-apcu \
     php-pecl-zip \
     nginx \
-	nano \
+    nano \
+    curl \
     && dnf clean all
 
 # Create necessary directories with correct permissions
@@ -50,6 +48,12 @@ COPY --chown=1001:0 . .
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN composer install --no-dev --optimize-autoloader
 
+# Install npm dependencies
+RUN npm install
+
+# Compile assets
+RUN npm run production
+
 # Configure permissions for OpenShift
 RUN chgrp -R 0 /var/www/html && \
     chmod -R g=u /var/www/html && \
@@ -66,9 +70,7 @@ RUN chgrp -R 0 /var/www/html && \
     chmod -R g=u /var/lib/nginx && \
     chmod -R g=u /var/log/nginx && \
     chmod -R g=u /var/log/php-fpm && \
-	chmod -R 775 /opt/app-root/src/.config/
-
-	
+    chmod -R 775 /opt/app-root/src/.config/ 
 
 # Create PHP-FPM configuration
 RUN echo '[global]' > /etc/php-fpm.d/www.conf && \
@@ -94,7 +96,6 @@ RUN echo '#!/bin/sh' > /var/www/html/start.sh && \
     echo 'php-fpm -F --fpm-config /etc/php-fpm.d/www.conf -c /etc/php.ini &' >> /var/www/html/start.sh && \
     echo 'nginx -g "daemon off;"' >> /var/www/html/start.sh && \
     chmod +x /var/www/html/start.sh
-
 
 # Switch to non-root user
 USER 1001
