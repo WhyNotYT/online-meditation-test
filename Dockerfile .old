@@ -1,0 +1,54 @@
+# Base image with PHP-FPM and Nginx
+FROM jkaninda/nginx-php-fpm:8.3
+
+# Set working directory
+WORKDIR /var/www/html
+
+# Install MariaDB and supervisor
+RUN apt-get update && \
+    apt-get install -y mariadb-server supervisor && \
+    rm -rf /var/lib/apt/lists/*
+
+# Ensure PHP-FPM directories exist
+RUN mkdir -p /run/php && \
+    chown www-data:www-data /run/php
+
+# Copy project files
+COPY . .
+
+# Install PHP dependencies using Composer
+RUN composer install --no-dev --optimize-autoloader
+
+# Create log file and set permissions
+RUN mkdir -p storage/logs && \
+    touch storage/logs/laravel.log && \
+    chmod -R 775 storage bootstrap/cache && \
+    chown -R www-data:www-data storage bootstrap/cache
+
+# Configure and initialize MariaDB
+RUN mkdir -p /var/run/mysqld && \
+    chown mysql:mysql /var/run/mysqld && \
+    chmod 777 /var/run/mysqld
+
+# Initialize MariaDB data directory
+RUN mkdir -p /var/lib/mysql && \
+    chown -R mysql:mysql /var/lib/mysql && \
+    mysql_install_db --user=mysql --datadir=/var/lib/mysql
+
+# Create supervisor log directory
+RUN mkdir -p /var/log/supervisor
+
+# Copy configuration files
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+COPY php-fpm.conf /usr/local/etc/php-fpm.conf
+
+# Define the document root for Nginx
+ENV DOCUMENT_ROOT=/var/www/html/public
+
+# Expose port 80 (default for HTTP)
+EXPOSE 80
+
+# Use supervisor as the entry point
+RUN php artisan key:generate
+CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
