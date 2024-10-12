@@ -99,45 +99,34 @@ Route::group(['middleware' => ['auth', 'hasRole:allowed'], 'prefix' => 'admin'],
     // Roles Routes End
 });
 
+
 Route::get('/', function () {
     if (Auth::check()) {
         return redirect()->route('frontend.home');
+    } else {
+        return view('frontend.index');
     }
-    return view('frontend.index');
 })->name('frontend.main');
+Route::get('/signin', [AuthController::class, 'login'])->name('frontend.login');
 
-// Authentication routes
-Route::middleware('web')->group(function () {
-    Route::get('/signin', [AuthController::class, 'login'])
-        ->name('frontend.login')
-        ->middleware('guest');
-        
-    Route::post('/authenticate', [AuthController::class, 'authenticate'])
-        ->name('frontend.authenticate')
-        ->middleware('guest');
-        
-    Route::post('/register', [AuthController::class, 'register'])
-        ->name('frontend.register')
-        ->middleware('guest');
-        
-    Route::get('/logout', [AuthController::class, 'logout'])
-        ->name('frontend.logout')
-        ->middleware('auth');
-});
+Route::post('/authenticate', [AuthController::class, 'authenticate'])->name('frontend.authenticate');
 
-// Authenticated frontend routes
-Route::middleware(['auth'])->group(function () {
+Route::post('/register', [AuthController::class, 'register'])->name('frontend.register');
+
+// group routes for frontend with auth middleware
+Route::group(['middleware' => ['auth']], function () {
     Route::get('/home', [UserProfileController::class, 'index'])->name('frontend.home');
     Route::post('/user/{userId}/update', [UserProfileController::class, 'updateUser'])->name('users.update');
-    
+
+    Route::get('/logout', [AuthController::class, 'logout'])->name('frontend.logout');
+
     Route::get('/meditationOne', function () {
         return view('frontend.meditationOne');
     })->name('frontend.meditationOne');
 
-    Route::get('/start-meditation', [LogsController::class, 'startMeditation'])
-        ->name('startMeditation');
-    Route::post('/record-stress-levels', [LogsController::class, 'recordStressLevels'])
-        ->name('recordStressLevels');
+    Route::get('/start-meditation', [LogsController::class, 'startMeditation'])->name('startMeditation');
+    Route::post('/record-stress-levels', [LogsController::class, 'recordStressLevels'])->name('recordStressLevels');
+
 
     Route::get('/meditationTwo', function () {
         return view('frontend.meditationTwo');
