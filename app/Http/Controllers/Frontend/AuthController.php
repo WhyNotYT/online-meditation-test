@@ -72,7 +72,7 @@ class AuthController extends Controller
             'username' => $username,
         ]);
 
-        $user->assignRole(2);
+        $user->assignRole('user');
 
         ClearCacheJob::dispatch();
 

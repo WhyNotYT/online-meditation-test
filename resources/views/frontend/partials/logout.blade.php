@@ -16,10 +16,10 @@
                 <button type="button" class="color-btn btn btn-secondary" data-dismiss="modal">
                     Cancel
                 </button>
-                <a href="{{ route('frontend.logout') }}" type="button" class="color-btn btn btn-secondary"
-                    id="confirmButton">
-                    Log out
-                </a>
+                <form method="POST" action="{{ route('frontend.logout') }}">
+                    @csrf
+                    <button type="submit">Logout</button>
+                </form>
             </div>
         </div>
     </div>

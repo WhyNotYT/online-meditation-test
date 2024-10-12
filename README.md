@@ -61,3 +61,11 @@ https://catalog.redhat.com/software/containers/rhel9/mysql-80/61a60915c17162a20c
     - php artisan config:clear
     - php artisan cache:clear
     - php artisan view:clear
+
+### If registration doesn't work
+- Run this in the terminal:
+    - php artisan tinker
+    - \Spatie\Permission\Models\Role::create(['name' => 'user', 'guard_name' => 'web']);
+    - php artisan config:clear
+    - php artisan cache:clear
+    - php artisan permission:cache-reset
