@@ -108,7 +108,6 @@ Route::get('/', function () {
     }
 })->name('frontend.main');
 Route::get('/signin', [AuthController::class, 'login'])->name('frontend.login');
-
 Route::post('/authenticate', [AuthController::class, 'authenticate'])->name('frontend.authenticate');
 
 Route::post('/register', [AuthController::class, 'register'])->name('frontend.register');
@@ -118,7 +117,7 @@ Route::group(['middleware' => ['auth']], function () {
     Route::get('/home', [UserProfileController::class, 'index'])->name('frontend.home');
     Route::post('/user/{userId}/update', [UserProfileController::class, 'updateUser'])->name('users.update');
 
-    Route::get('/logout', [AuthController::class, 'logout'])->name('frontend.logout');
+    Route::post('/logout', [AuthController::class, 'logout'])->name('frontend.logout');
 
     Route::get('/meditationOne', function () {
         return view('frontend.meditationOne');
