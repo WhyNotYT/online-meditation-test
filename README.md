@@ -59,7 +59,7 @@ https://catalog.redhat.com/software/containers/rhel9/mysql-80/61a60915c17162a20c
 	- SELECT * FROM logs;
 - If you want to check other data, type:
 	- SHOW TABLES;
-- Then "SELECT * FROM [name of the table]"
+- Then "SELECT * FROM [name of the table];"
 
 ## Debugging
 ###  If there's Bad Gateway or Server Error
