@@ -47,6 +47,19 @@ https://catalog.redhat.com/software/containers/rhel9/mysql-80/61a60915c17162a20c
     - php artisan config:clear
     - php artisan cache:clear
     - php artisan view:clear
+	
+### Checking Logs
+- Open Rahti Project -> Topology
+- Select the Pod named mysql
+- Click on "Logs"
+- This will take you to the Pod page, from there go to "Terminal"
+- To get the meditation logs type these:
+	- mysql -ularavel -plaravel_password
+	- use laravel_db;
+	- SELECT * FROM logs;
+- If you want to check other data, type:
+	- SHOW TABLES;
+- Then "SELECT * FROM [name of the table]"
 
 ## Debugging
 ###  If there's Bad Gateway or Server Error
